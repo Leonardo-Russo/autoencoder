@@ -2,3 +2,4 @@ dataset/
 archive/**/*.zip
 inference/
 test/
+models/**/*.pth
