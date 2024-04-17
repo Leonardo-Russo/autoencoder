@@ -17,6 +17,10 @@ import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 
 
+# # To Do's:
+# - make it so that the metrics are storable
+
+
 # # Set the device
 # !export CUDA_VISIBLE_DEVICES=0
 
@@ -141,11 +145,11 @@ def validate(encoder, decoder, loader, epoch, results_path, criterion, device):
 
             # Calculate SSIM for each image in the batch
             for i in range(images.size(0)):
-                img1 = images[i].squeeze().cpu().numpy()
-                img2 = decoded_imgs[i].squeeze().cpu().numpy()
                 # print(f"Max-Min values in original images: {img1.max()} | {img1.min()}")
                 # print(f"Max-Min values in decoded  images: {img2.max()} | {img2.min()}")
-                ssim_value = ssim(img1, img2, data_range=img1.max()-img1.min(), channel_axis=0, win_size=5, gaussian_weights=False)
+                img1 = images[i].squeeze().cpu().numpy()
+                img2 = decoded_imgs[i].squeeze().cpu().numpy()
+                ssim_value = ssim(img1, img2, data_range=1, channel_axis=0, win_size=5, gaussian_weights=False)
                 total_ssim += ssim_value
             
     with torch.no_grad():

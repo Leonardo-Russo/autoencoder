@@ -58,29 +58,6 @@ def save_model(model, path):
     torch.save(model.state_dict(), path)
 
 
-# def visualize_reconstruction(original, reconstructed, epoch, save_path=None):
-#     # Assuming original and reconstructed are tensors of shape (B, C, H, W)
-#     fig, axs = plt.subplots(1, 2, figsize=(16, 8))
-#     original = make_grid(original.cpu(), nrow=6)
-#     reconstructed = make_grid(reconstructed.cpu(), nrow=6)
-
-#     axs[0].imshow(original.permute(1, 2, 0))
-#     axs[0].set_title(f'Epoch: {epoch + 1} - Original Images')
-#     axs[0].axis('off')
-
-#     axs[1].imshow(reconstructed.permute(1, 2, 0))
-#     axs[1].set_title(f'Epoch: {epoch + 1} - Reconstructed Images')
-#     axs[1].axis('off')
-
-#     # Specify the file name and path if not provided
-#     if save_path is not None:
-#         os.makedirs(save_path, exist_ok=True)
-#         save_path = os.path.join(save_path, f'epoch_{epoch + 1}_reconstruction.png')
-#         plt.savefig(save_path)  # Save the figure
-#     else:
-#         plt.show()              # Show the figure
-
-
 def visualize_reconstruction(original, reconstructed, epoch, save_path=None, num_images=16):
     """
     Visualize a comparison of original and reconstructed images in a grid format.
