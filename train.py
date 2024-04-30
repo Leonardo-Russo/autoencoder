@@ -15,6 +15,7 @@ from utils import *
 from skimage.metrics import structural_similarity as ssim
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
+import random
 
 
 # # To Do's:
@@ -38,18 +39,14 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"using device: {device}")
 
 # Initialize Encoder and Decoder
-encoder = ViTEncoder(out_features=output_dims, model_name='dinov2_vitl14_reg_lc').to(device)
+encoder = ViTEncoder(out_features=output_dims, model_name='dinov2_vits14_reg_lc').to(device)
 decoder = Decoder(input_dims=output_dims, hidden_dims=hidden_dims, output_channels=3, initial_size=7).to(device)
-# encoder = Encoder(latent_dim=output_dims).to(device)
 print(encoder, decoder)
 
 # Optimizer and Loss Function
 learning_rate = 1e-3
 optimizer = optim.Adam(list(encoder.parameters()) + list(decoder.parameters()), lr=learning_rate)
 criterion = nn.HuberLoss()
-# criterion = CombinedLoss(device=device)
-# criterion = nn.MSELoss()
-# criterion = PerceptualLoss().to(device)
 
 # Transformations
 transform = transforms.Compose([
@@ -58,11 +55,19 @@ transform = transforms.Compose([
     transforms.ToTensor()
 ])
 
-# Define the Datasets
-train_dataset = CustomDataset('dataset/train', transform=transform)
-val_dataset = CustomDataset('dataset/val', transform=transform)
+# Setup the absolute path to the dataset
+dataset_path = '/home/lrusso/cvusa'
 
-# Define the DataLoaders
+# Split the dataset into training and validation
+train_scenes, val_scenes = cvusa_sample(dataset_path, scene_percentage=0.2, split_ratio=0.8)
+
+# Create the Datasets
+train_dataset = CVUSA(dataset_path, train_scenes, transform=transform)
+val_dataset = CVUSA(dataset_path, val_scenes, transform=transform)
+# train_dataset = CustomDataset('dataset/train', transform=transform)
+# val_dataset = CustomDataset('dataset/val', transform=transform)
+
+# Create the DataLoaders
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=4)
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=shuffle)
 
@@ -112,7 +117,7 @@ def train(encoder, decoder, train_loader, val_loader, device, criterion, optimiz
         epochs_data.append(epoch + 1)
         
         # Validation and metrics collection
-        val_loss, val_psnr, val_ssim = validate(encoder, decoder, val_loader, epoch, results_path, criterion, device)
+        val_loss, val_psnr, val_ssim = validate(encoder, decoder, val_loader, epoch, epochs, results_path, criterion, device)
         val_loss_data.append(val_loss)
         val_psnr_data.append(val_psnr)
         val_ssim_data.append(val_ssim)
@@ -125,7 +130,7 @@ def train(encoder, decoder, train_loader, val_loader, device, criterion, optimiz
         torch.save(decoder.state_dict(), os.path.join(model_path, f'decoder_epoch_{epoch+1}.pth'))
 
 
-def validate(encoder, decoder, loader, epoch, results_path, criterion, device):
+def validate(encoder, decoder, loader, epoch, epochs, results_path, criterion, device):
     encoder.eval()
     decoder.eval()
     validation_loss = 0.0
@@ -133,24 +138,24 @@ def validate(encoder, decoder, loader, epoch, results_path, criterion, device):
     total_ssim = 0.0
 
     with torch.no_grad():
-        for images in loader:
+        for images in tqdm(loader, desc=f'Epoch {epoch+1}/{epochs}'):
             images = images.to(device)
             encoded_imgs = encoder(images)
             decoded_imgs = decoder(encoded_imgs)
             loss = criterion(decoded_imgs, images)
             validation_loss += loss.item()
 
-            # Calculate PSNR
-            total_psnr += psnr(images, decoded_imgs)
+            # # Calculate PSNR
+            # total_psnr += psnr(images, decoded_imgs)
 
-            # Calculate SSIM for each image in the batch
-            for i in range(images.size(0)):
-                # print(f"Max-Min values in original images: {img1.max()} | {img1.min()}")
-                # print(f"Max-Min values in decoded  images: {img2.max()} | {img2.min()}")
-                img1 = images[i].squeeze().cpu().numpy()
-                img2 = decoded_imgs[i].squeeze().cpu().numpy()
-                ssim_value = ssim(img1, img2, data_range=1, channel_axis=0, win_size=5, gaussian_weights=False)
-                total_ssim += ssim_value
+            # # Calculate SSIM for each image in the batch
+            # for i in range(images.size(0)):
+            #     # print(f"Max-Min values in original images: {img1.max()} | {img1.min()}")
+            #     # print(f"Max-Min values in decoded  images: {img2.max()} | {img2.min()}")
+            #     img1 = images[i].squeeze().cpu().numpy()
+            #     img2 = decoded_imgs[i].squeeze().cpu().numpy()
+            #     ssim_value = ssim(img1, img2, data_range=1, channel_axis=0, win_size=5, gaussian_weights=False)
+            #     total_ssim += ssim_value
             
     with torch.no_grad():
         for images in loader:
@@ -167,4 +172,4 @@ def validate(encoder, decoder, loader, epoch, results_path, criterion, device):
     return avg_val_loss, avg_psnr, avg_ssim
 
 
-train(encoder, decoder, train_dataloader, val_dataloader, device, criterion, optimizer, epochs=10, save_path='lDINO + Huber')
+train(encoder, decoder, train_dataloader, val_dataloader, device, criterion, optimizer, epochs=1, save_path='sDINO + Huber + 0.2')

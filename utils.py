@@ -17,6 +17,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr_metric
 from skimage.metrics import structural_similarity as ssim_metric
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 
 def plot_metrics(epochs, train_loss, val_loss, val_psnr, val_ssim, path='training_plots'):
@@ -157,6 +158,20 @@ def psnr(target, output, max_val=1.0):
     output_np = output.detach().cpu().numpy()
     scores = [psnr_metric(t, o, data_range=max_val) for t, o in zip(target_np, output_np)]
     return np.mean(scores)
+
+
+def cvusa_sample(dataset_path, scene_percentage=1, split_ratio=0.8):
+    # Setup the absolute path to the dataset
+    all_scenes = [name for name in os.listdir(os.path.join(dataset_path, 'streetview/cutouts')) if os.path.isdir(os.path.join(dataset_path, 'streetview/cutouts', name))]
+    num_scenes_to_select = int(len(all_scenes) * scene_percentage)
+    selected_scenes = random.sample(all_scenes, num_scenes_to_select)
+
+    random.shuffle(selected_scenes)
+    split_point = int(split_ratio * len(selected_scenes))
+    train_scenes = selected_scenes[:split_point]
+    val_scenes = selected_scenes[split_point:]
+
+    return train_scenes, val_scenes
 
 
 
@@ -319,4 +334,33 @@ class CustomDataset(Dataset):
         if self.transform:
             image = self.transform(image)
         
+        return image  
+
+
+class CVUSA(Dataset):
+    def __init__(self, root_dir, scenes, transform=None):
+        """
+        root_dir (string): Directory with all the images.
+        scenes (list): List of scene identifiers to include in the dataset.
+        transform (callable, optional): Optional transform to be applied on a sample.
+        """
+        self.root_dir = root_dir
+        self.transform = transform
+        self.image_paths = []
+        for scene in scenes:
+            scene_path = os.path.join(root_dir, f"streetview/cutouts/{scene}")
+            for subdir, _, files in os.walk(scene_path):
+                for file in files:
+                    if file.endswith('.jpg'):
+                        self.image_paths.append(os.path.join(subdir, file))
+
+    def __len__(self):
+        return len(self.image_paths)
+
+    def __getitem__(self, idx):
+        img_name = self.image_paths[idx]
+        image = Image.open(img_name)
+        if self.transform:
+            image = self.transform(image)
+
         return image
