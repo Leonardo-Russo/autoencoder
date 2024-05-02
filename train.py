@@ -29,7 +29,7 @@ import random
 image_channels = 3          # for RGB images
 image_size = 224            # assuming square images
 hidden_dims = 512           # hidden dimensions
-output_dims = 100           # size of phi
+output_dims = 1000           # size of phi
 batch_size = 64
 shuffle = True
 
@@ -39,7 +39,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"using device: {device}")
 
 # Initialize Encoder and Decoder
-encoder = ViTEncoder(out_features=output_dims, model_name='dinov2_vits14_reg_lc').to(device)
+# encoder = ViTEncoder(out_features=output_dims, model_name='dinov2_vits14_reg_lc').to(device)
+encoder = Encoder(latent_dim=output_dims).to(device)
 decoder = Decoder(input_dims=output_dims, hidden_dims=hidden_dims, output_channels=3, initial_size=7).to(device)
 print(encoder, decoder)
 
@@ -47,6 +48,7 @@ print(encoder, decoder)
 learning_rate = 1e-3
 optimizer = optim.Adam(list(encoder.parameters()) + list(decoder.parameters()), lr=learning_rate)
 criterion = nn.HuberLoss()
+# criterion = nn.MSELoss()
 
 # Transformations
 transform = transforms.Compose([
@@ -68,7 +70,7 @@ val_dataset = CVUSA(dataset_path, val_scenes, transform=transform)
 # val_dataset = CustomDataset('dataset/val', transform=transform)
 
 # Create the DataLoaders
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=4)
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=8)
 val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=shuffle)
 
 
@@ -125,9 +127,9 @@ def train(encoder, decoder, train_loader, val_loader, device, criterion, optimiz
         # Plotting the metrics
         plot_metrics(epochs_data, train_loss_data, val_loss_data, val_psnr_data, val_ssim_data, metrics_path)
         
-        # Save the Model
-        torch.save(encoder.state_dict(), os.path.join(model_path, f'encoder_epoch_{epoch+1}.pth'))
-        torch.save(decoder.state_dict(), os.path.join(model_path, f'decoder_epoch_{epoch+1}.pth'))
+    # Save the Model
+    torch.save(encoder.state_dict(), os.path.join(model_path, f'encoder_epoch_{epoch+1}.pth'))
+    torch.save(decoder.state_dict(), os.path.join(model_path, f'decoder_epoch_{epoch+1}.pth'))
 
 
 def validate(encoder, decoder, loader, epoch, epochs, results_path, criterion, device):
@@ -172,4 +174,4 @@ def validate(encoder, decoder, loader, epoch, epochs, results_path, criterion, d
     return avg_val_loss, avg_psnr, avg_ssim
 
 
-train(encoder, decoder, train_dataloader, val_dataloader, device, criterion, optimizer, epochs=1, save_path='sDINO + Huber + 0.2')
+train(encoder, decoder, train_dataloader, val_dataloader, device, criterion, optimizer, epochs=50, save_path='CNN + Huber + n_phi = 1000')
