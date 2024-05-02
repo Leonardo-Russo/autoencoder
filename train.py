@@ -50,10 +50,14 @@ optimizer = optim.Adam(list(encoder.parameters()) + list(decoder.parameters()), 
 criterion = nn.HuberLoss()
 # criterion = nn.MSELoss()
 
-# Transformations
+# Data Augmentation
 transform = transforms.Compose([
     transforms.Resize((image_size, image_size)),
     transforms.CenterCrop((image_size, image_size)),
+    transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(degrees=15),
+    transforms.RandomApply([transforms.GaussianBlur(3, sigma=(0.1, 2.0))], p=0.5),
     transforms.ToTensor()
 ])
 
