@@ -11,7 +11,7 @@ from torchvision.transforms.functional import to_tensor, to_pil_image
 import matplotlib.pyplot as plt
 import shutil
 import timm
-from utils import *
+from utils2 import *
 from skimage.metrics import structural_similarity as ssim
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
@@ -29,7 +29,7 @@ import random
 image_channels = 3          # for RGB images
 image_size = 224            # assuming square images
 hidden_dims = 512           # hidden dimensions
-output_dims = 1000           # size of phi
+n_phi = 1000                # size of phi
 batch_size = 64
 shuffle = True
 
@@ -40,18 +40,23 @@ print(f"using device: {device}")
 
 # Initialize Encoder and Decoder
 # encoder = ViTEncoder(out_features=output_dims, model_name='dinov2_vits14_reg_lc').to(device)
-encoder = Encoder(latent_dim=output_dims).to(device)
-decoder = Decoder(input_dims=output_dims, hidden_dims=hidden_dims, output_channels=3, initial_size=7).to(device)
+encoder = Encoder(latent_dim=n_phi).to(device)
+decoder = Decoder(input_dims=n_phi, hidden_dims=hidden_dims, output_channels=3, initial_size=7).to(device)
 print(encoder, decoder)
 
 # Optimizer and Loss Function
 learning_rate = 1e-3
-optimizer = optim.Adam(list(encoder.parameters()) + list(decoder.parameters()), lr=learning_rate)
+optimizer = optim.Adam(list(encoder.parameters()) + list(decoder.parameters()), lr=learning_rate, weight_decay=1e-5)
 criterion = nn.HuberLoss()
-# criterion = nn.MSELoss()
 
 # Data Augmentation
-transform = transforms.Compose([
+transform_plain = transforms.Compose([
+    transforms.Resize((image_size, image_size)),
+    transforms.CenterCrop((image_size, image_size)),
+    transforms.ToTensor()
+])
+
+transform_aug = transforms.Compose([
     transforms.Resize((image_size, image_size)),
     transforms.CenterCrop((image_size, image_size)),
     transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),
@@ -68,10 +73,8 @@ dataset_path = '/home/lrusso/cvusa'
 train_scenes, val_scenes = cvusa_sample(dataset_path, scene_percentage=0.2, split_ratio=0.8)
 
 # Create the Datasets
-train_dataset = CVUSA(dataset_path, train_scenes, transform=transform)
-val_dataset = CVUSA(dataset_path, val_scenes, transform=transform)
-# train_dataset = CustomDataset('dataset/train', transform=transform)
-# val_dataset = CustomDataset('dataset/val', transform=transform)
+train_dataset = CVUSA(dataset_path, train_scenes, transform=transform_plain)
+val_dataset = CVUSA(dataset_path, val_scenes, transform=transform_plain)
 
 # Create the DataLoaders
 train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=8)
@@ -178,4 +181,4 @@ def validate(encoder, decoder, loader, epoch, epochs, results_path, criterion, d
     return avg_val_loss, avg_psnr, avg_ssim
 
 
-train(encoder, decoder, train_dataloader, val_dataloader, device, criterion, optimizer, epochs=50, save_path='CNN + Huber + n_phi = 1000')
+train(encoder, decoder, train_dataloader, val_dataloader, device, criterion, optimizer, epochs=50, save_path='CNN5 + Huber + sigmoid + n_phi = 1000')

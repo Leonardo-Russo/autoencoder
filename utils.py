@@ -243,7 +243,7 @@ class ViTEncoder(nn.Module):
 
 class Encoder(nn.Module):
 
-	def __init__(self, latent_dim):
+	def __init__(self, latent_dim=1000):
 		super(Encoder, self).__init__()
 
 		self.cnn = nn.Sequential(
@@ -255,7 +255,7 @@ class Encoder(nn.Module):
 			nn.ELU(True),
 			nn.Conv2d(256, 512, 3, stride=2, padding=0),
 			nn.BatchNorm2d(512),
-			nn.ELU(True),
+			nn.ELU(True),           # 512x27x27
 		)
 
 		self.flatten = nn.Flatten(start_dim=1)
