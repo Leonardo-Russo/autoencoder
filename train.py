@@ -11,15 +11,11 @@ from torchvision.transforms.functional import to_tensor, to_pil_image
 import matplotlib.pyplot as plt
 import shutil
 import timm
-from utils2 import *
+from utils3 import *
 from skimage.metrics import structural_similarity as ssim
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
 import random
-
-
-# # To Do's:
-# - make it so that the metrics are storable
 
 
 # # Set the device
@@ -177,8 +173,8 @@ def validate(encoder, decoder, loader, epoch, epochs, results_path, criterion, d
 
     avg_val_loss = validation_loss / len(loader)
     avg_psnr = total_psnr / len(loader)
-    avg_ssim = total_ssim / (len(loader) * images.size(0))  # Normalize by total number of images
+    avg_ssim = total_ssim / (len(loader) * images.size(0))      # normalize by total number of images
     return avg_val_loss, avg_psnr, avg_ssim
 
 
-train(encoder, decoder, train_dataloader, val_dataloader, device, criterion, optimizer, epochs=50, save_path='CNN5 + Huber + sigmoid + n_phi = 1000')
+train(encoder, decoder, train_dataloader, val_dataloader, device, criterion, optimizer, epochs=100, save_path='CNN2 + Huber + n_phi = 1000')

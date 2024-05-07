@@ -243,45 +243,39 @@ class ViTEncoder(nn.Module):
 
 class Encoder(nn.Module):
 
-	def __init__(self, latent_dim):
+	def __init__(self, latent_dim=1000):
 		super(Encoder, self).__init__()
 
 		self.cnn = nn.Sequential(
-            nn.Conv2d(3, 64, 3, stride=2, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ELU(True),
-            nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ELU(True),
-            nn.Conv2d(128, 256, 3, stride=2, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ELU(True),
-            nn.Conv2d(256, 512, 3, stride=2, padding=1),
-            nn.BatchNorm2d(512),
-            nn.ELU(True),
-            nn.Conv2d(512, 1024, 3, stride=2, padding=1),
-            nn.BatchNorm2d(1024),
-            nn.ELU(True)                # 3x224x224 -> 64x112x112 -> 128x56x56 -> 256x28x28 -> 512x14x14 -> 1024x7x7
-        )
+			nn.Conv2d(3, 128, 3, stride=2, padding=1),
+			nn.BatchNorm2d(128),
+			nn.ELU(True),
+			nn.Conv2d(128, 256, 3, stride=2, padding=1),
+			nn.BatchNorm2d(256),
+			nn.ELU(True),
+			nn.Conv2d(256, 512, 3, stride=2, padding=0),
+			nn.BatchNorm2d(512),
+			nn.ELU(True),           # 512x27x27
+		)
 
 		self.flatten = nn.Flatten(start_dim=1)
 
 		self.fc = nn.Sequential(
-			nn.Linear(1024*7*7, 5000),
+			nn.Linear(512*27*27, 1000),
 			nn.ELU(True),
-			nn.Linear(5000, latent_dim)
+			nn.Linear(1000, latent_dim)
 		)
 
 	def forward(self, x):
 		x = self.cnn(x)
-		# print("Encoder CNN Output Size: ", x.shape)
+		# print("enc: ", x.shape)
 		x = self.flatten(x)
 		x = self.fc(x)
 		return x
    
 
 class Decoder(nn.Module):
-    def __init__(self, input_dims=100, hidden_dims=1024, output_channels=3, initial_size=7):
+    def __init__(self, input_dims=100, hidden_dims=512, output_channels=3, initial_size=7):
         super(Decoder, self).__init__()
 
         self.input_dims = input_dims
@@ -290,27 +284,30 @@ class Decoder(nn.Module):
         self.initial_size = initial_size
         
         self.fc = nn.Sequential(
-			nn.Linear(input_dims, 5000),
+			nn.Linear(input_dims, 1000),
+			nn.BatchNorm1d(1000),
 			nn.ELU(True),
-			nn.Linear(5000, hidden_dims*initial_size*initial_size)
+			nn.Linear(1000, hidden_dims * initial_size * initial_size),
+			nn.BatchNorm1d(hidden_dims * initial_size * initial_size),
+			nn.ELU(True)
 		)
 
         self.unflatten = nn.Unflatten(dim=1, unflattened_size=(hidden_dims, initial_size, initial_size))
         
         self.upsample = nn.Sequential(
-            nn.ConvTranspose2d(hidden_dims, hidden_dims // 2, kernel_size=3, stride=2, padding=1, output_padding=1),            # 1024x7x7 -> 512x14x14
+            nn.ConvTranspose2d(hidden_dims, hidden_dims // 2, kernel_size=3, stride=2, padding=1, output_padding=1),            # 7x7 -> 14x14
             nn.BatchNorm2d(hidden_dims // 2),
 			nn.ELU(True),
-            nn.ConvTranspose2d(hidden_dims // 2, hidden_dims // 4, kernel_size=3, stride=2, padding=1, output_padding=1),       # 512x14x14 -> 256x28x28
+            nn.ConvTranspose2d(hidden_dims // 2, hidden_dims // 4, kernel_size=3, stride=2, padding=1, output_padding=1),       # 14x14 -> 28x28
             nn.BatchNorm2d(hidden_dims // 4),
 			nn.ELU(True),
-            nn.ConvTranspose2d(hidden_dims // 4, hidden_dims // 8, kernel_size=3, stride=2, padding=1, output_padding=1),       # 256x28x28 -> 128x56x56
+            nn.ConvTranspose2d(hidden_dims // 4, hidden_dims // 8, kernel_size=3, stride=2, padding=1, output_padding=1),       # 28x28 -> 56x56
             nn.BatchNorm2d(hidden_dims // 8),
 			nn.ELU(True),
-            nn.ConvTranspose2d(hidden_dims // 8, hidden_dims // 16, kernel_size=3, stride=2, padding=1, output_padding=1),      # 128x56x56 -> 64x112x112
+            nn.ConvTranspose2d(hidden_dims // 8, hidden_dims // 16, kernel_size=3, stride=2, padding=1, output_padding=1),      # 56x56 -> 112x112
             nn.BatchNorm2d(hidden_dims // 16),
 			nn.ELU(True),
-            nn.ConvTranspose2d(hidden_dims // 16, output_channels, kernel_size=3, stride=2, padding=1, output_padding=1),       # 64x112x112 -> 3x224x224
+            nn.ConvTranspose2d(hidden_dims // 16, output_channels, kernel_size=3, stride=2, padding=1, output_padding=1),       # 112x112 -> 224x224
             nn.Sigmoid()
         )
 
